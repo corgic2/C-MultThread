@@ -1,71 +1,74 @@
+# 指定CMake的最低版本
 cmake_minimum_required(VERSION 3.10)
-project(CustomCaculator)
 
-set(TARGET_NAME CustomCaculator)
+# 设置项目名称
+project(MultThreadSTL)
 
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TARGET_NAME})
+# 设置目标名称
+set(TARGET_NAME MultThreadSTL)
 
-# Qt，开启Qt代码自动生成
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+# 设置启动项目
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT MultThreadSTL)
 
-
-# 设置Qt路径
-set(QTDIR "D:/Qt/5.15.2/msvc2019_64")
-
-# 将Qt路径添加到CMAKE_PREFIX_PATH
-list(APPEND CMAKE_PREFIX_PATH ${QTDIR})
-
-# 查找Qt5模块
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
-
-# Enable debugging symbols
-set(CMAKE_BUILD_TYPE Debug)
-
-# Add compiler flags for debugging
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-
-# 启用C++11
+# 启用C++17
 add_compile_options(-std=c++17)
+
 # 解决节数超过对象文件格式限制
 add_compile_options(-bigobj)
 
-# 是否x86 还是x64，默认x64
-if(CMAKE_CL_64)
-    SET(PLATFORM_CPU "x64")
+# 检测平台（x86 或 x64）
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(PLATFORM_CPU "x64")
 else()
-    SET(PLATFORM_CPU "x86")
+    set(PLATFORM_CPU "x86")
 endif()
-MESSAGE(STATUS "PLATFORM_CPU: ${PLATFORM_CPU}")
+message(STATUS "PLATFORM_CPU: ${PLATFORM_CPU}")
+
+
+# 添加VS过滤器
+macro(source_group_by_dir source_files)
+    if(MSVC)
+        set(cur_dir ${CMAKE_CURRENT_SOURCE_DIR})
+        foreach(file ${${source_files}})
+            string(REGEX REPLACE ${cur_dir}/\(.*\) \\1 file_path ${file})
+            string(REGEX REPLACE "\(.*\)/.*" \\1 sgbd_group_name ${file_path})
+            string(COMPARE EQUAL ${file_path} ${sgbd_group_name} nogroup)
+            string(REPLACE "/" "\\" sgbd_group_name ${sgbd_group_name})
+            get_filename_component(file_extension ${file} EXT)
+            if(file_extension STREQUAL ".ui")                   # ui文件，放Form Files
+                source_group("Form Files" FILES ${file})
+            elseif(file_extension STREQUAL ".qrc")
+                source_group("Resource Files" FILES ${file})    # qrc文件，放Resource Files
+				elseif(file_extension STREQUAL ".ts")
+                source_group("Language" FILES ${file})    # qrc文件，放Language
+            elseif(NOT nogroup)
+                source_group(${sgbd_group_name} FILES ${file})  # 使用所在子目录名作为过滤器名
+            endif()
+        endforeach(file)
+    endif(MSVC)
+endmacro(source_group_by_dir)
 
 # 设置输出路径
-if(${PLATFORM_CPU} STREQUAL "x64")
-    SET(EXECUTE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/x64/)
-else()
-    SET(EXECUTE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/x86/)
-endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_CPU})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_CPU})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${PLATFORM_CPU})
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${EXECUTE_OUTPUT_PATH})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${EXECUTE_OUTPUT_PATH})
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${EXECUTE_OUTPUT_PATH})
+# 所有源文件
+file(GLOB_RECURSE SRC_FILE "*.cpp" "*.cxx" "*.cc" "*.C" "*.c++" "*.h" "*.hpp" "*.H" "*.hxx" "*.ui" "*.qrc" "*.ts")
 
-# 收集文件 ---------------------------------------------------------
-file(GLOB ROOT_SRCS "*.cpp" "*.h")  # 根目录文件（如果有）
-file(GLOB MAIN_SRCS "Main/*.cpp" "Main/*.h")
-file(GLOB UIMODULE_SRCS "UIModule/*.cpp" "UIModule/*.h" "UIModule/*.ui")
+# 排除生成的moc、qrc和ui文件
+foreach(file ${SRC_FILE})
+    list(APPEND TARGET_SRC ${file})
+endforeach(file ${SRC_FILE})
+list(FILTER TARGET_SRC EXCLUDE REGEX "moc_|qrc_|ui_")
+list(FILTER TARGET_SRC EXCLUDE REGEX "build/*")
 
-# 创建分组 ---------------------------------------------------------
-source_group("Root" FILES ${ROOT_SRCS})
-source_group("Main" FILES ${MAIN_SRCS})
-source_group("UIModule" FILES ${UIMODULE_SRCS})
+# 添加VS过滤器
+source_group_by_dir(TARGET_SRC)
 
-# 添加可执行文件 ---------------------------------------------------
-add_executable(${TARGET_NAME}
-    ${ROOT_SRCS}
-    ${MAIN_SRCS}
-    ${UIMODULE_SRCS}
-)
+# 添加可执行文件
+add_executable(${TARGET_NAME} ${TARGET_SRC})
 
-# 链接 Qt 库 -------------------------------------------------------
-target_link_libraries(${TARGET_NAME} Qt5::Core Qt5::Widgets)
+# 包含目录
+target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
