@@ -1,9 +1,12 @@
 ﻿#include <functional>
 #include <iostream>
 #include "Charpter2/CreateThread.h"
-
+#include "Charpter3/ThreadMutexAssistant.h"
+#define CHARPATER2 0
+#define CHARPATER3 1
 int main(int argc, char** argv)
 {
+#if CHARPATER2
     {
         TempWorkTask work;
         CreateThread charPter2;
@@ -14,6 +17,14 @@ int main(int argc, char** argv)
         charPter2.CreateThreadByClassFunction();
         charPter2.CreateThreadCopyObject();
     }
+#endif
+#if CHARPATER3
+    {
+        ThreadMutexAssistant t;
+        std::thread tmp(&ThreadMutexAssistant::FunctionToLockGuardTestForThread, &t);
+        tmp.join();
+    }
+#endif
     std::cout << "Main Function End" << std::endl;
     return 0;
 }
