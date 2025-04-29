@@ -1,8 +1,8 @@
 ﻿#include "CreateThread.h"
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <thread>
-
 TempWorkTask::TempWorkTask()
 {
 }
@@ -82,5 +82,16 @@ void CreateThread::CreateThreadCopyObject()
 {
     TempWorkTask work;
     std::thread t(func, work);
+    t.join();
+}
+
+void CreateThread::CreateThreadVariableNullptr()
+{
+    TempWorkTask work;
+    //auto p = new int(30);
+    auto p = std::make_shared<int>(30);
+    std::thread t(&TempWorkTask::doVariableThing, &work, std::ref(*p));
+    //delete p;
+    //p = nullptr;
     t.join();
 }

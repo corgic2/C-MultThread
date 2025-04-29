@@ -24,4 +24,6 @@ public:
     void CreateThreadByClassFunction();
     //观察线程内部拷贝参数过程
     void CreateThreadCopyObject();
+    //观察线程引用变量提前释放的问题
+    void CreateThreadVariableNullptr();
 };

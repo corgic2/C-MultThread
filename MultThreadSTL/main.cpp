@@ -16,12 +16,15 @@ int main(int argc, char** argv)
         charPter2.CreateThreadInVariableFunction(std::bind(&TempWorkTask::doVariableThing, &work, std::placeholders::_1));
         charPter2.CreateThreadByClassFunction();
         charPter2.CreateThreadCopyObject();
+        charPter2.CreateThreadVariableNullptr();
     }
 #endif
 #if CHARPATER3
     {
         ThreadMutexAssistant t;
-        std::thread tmp(&ThreadMutexAssistant::FunctionToLockGuardTestForThread, &t);
+        //std::thread tmp(&ThreadMutexAssistant::FunctionToLockGuardTestForThread, &t);
+        //tmp.join();
+        std::thread tmp(&ThreadMutexAssistant::FunctionToUniqueLockTestForThread, &t);
         tmp.join();
     }
 #endif
