@@ -2,8 +2,10 @@
 #include <iostream>
 #include "Charpter2/CreateThread.h"
 #include "Charpter3/ThreadMutexAssistant.h"
+#include "Charpter4/ThreadSynchronizationClass.h"
 #define CHARPATER2 0
 #define CHARPATER3 1
+#define CHARPATER4 0
 int main(int argc, char** argv)
 {
 #if CHARPATER2
@@ -24,7 +26,16 @@ int main(int argc, char** argv)
         ThreadMutexAssistant t;
         //std::thread tmp(&ThreadMutexAssistant::FunctionToLockGuardTestForThread, &t);
         //tmp.join();
-        std::thread tmp(&ThreadMutexAssistant::FunctionToUniqueLockTestForThread, &t);
+        std::thread tmp(&ThreadMutexAssistant::DeadLockTest, &t);
+        tmp.join();
+    }
+#endif
+#if CHARPATER4
+    {
+        ThreadSynchronizationClass t;
+        //std::thread tmp(&ThreadMutexAssistant::FunctionToLockGuardTestForThread, &t);
+        //tmp.join();
+        std::thread tmp(&ThreadSynchronizationClass::TestFutureThreadUsed, &t);
         tmp.join();
     }
 #endif

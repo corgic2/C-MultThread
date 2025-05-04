@@ -2,13 +2,13 @@
 cmake_minimum_required(VERSION 3.10)
 
 # 设置项目名称
-project(MultThreadSTL)
+project(MultThreadStudy)
 
 # 设置目标名称
-set(TARGET_NAME MultThreadSTL)
+set(TARGET_NAME MultThreadStudy)
 
 # 设置启动项目
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT MultThreadSTL)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TARGET_NAME})
 
 # 启用C++17
 add_compile_options(-std=c++17)
