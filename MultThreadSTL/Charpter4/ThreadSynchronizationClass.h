@@ -27,7 +27,9 @@ private:
     std::queue<ProductData> m_queueData;
     int m_id = 0;
     std::mutex m_mutex;
-    bool m_stop = false;
+    std::atomic<bool> m_stop{false};
     std::condition_variable m_consumerCV;
     std::condition_variable m_producerCV;
+    std::vector<std::thread> m_producers;
+    std::vector<std::thread> m_consumers;
 };
