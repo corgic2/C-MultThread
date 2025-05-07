@@ -11,25 +11,33 @@ public:
         int id;
         std::string name;
     };
+
+    struct queueDataInfo
+    {
+        std::queue<ProductData> queue;
+        std::mutex mutex;
+        std::condition_variable cv;
+        std::string name;
+    };
     ThreadSynchronizationClass();
     ~ThreadSynchronizationClass();
 
-    void CreateProduct();  // 生产者
-    void ConsumeProduct(); // 消费者
-    //测试没有条件变量的生产者消费者
+    void CreateProduct();
+    void ProcessStage(queueDataInfo& A, queueDataInfo& B); // 生产者 - 消费者
+    void ConsumeProduct();
+    //测试生产者消费者模型
     void TestCreatorComsumerModel();
-    //测试条件变量
-    void TestConditionVariableUsed();
-    //测试Future
-    void TestFutureThreadUsed();
 
 private:
-    std::queue<ProductData> m_queueData;
+    //产品多个处理阶段 A -> B ->C -> Data;
+    queueDataInfo m_ProducerA;
+    queueDataInfo m_ProducerAndConsumerB;
+    queueDataInfo m_ProducerBndConsumerC;
+    queueDataInfo m_ConsumerData;
     int m_id = 0;
-    std::mutex m_mutex;
     std::atomic<bool> m_stop{false};
-    std::condition_variable m_consumerCV;
-    std::condition_variable m_producerCV;
     std::vector<std::thread> m_producers;
     std::vector<std::thread> m_consumers;
+    std::vector<std::thread> m_producersToConsumers;
+
 };
