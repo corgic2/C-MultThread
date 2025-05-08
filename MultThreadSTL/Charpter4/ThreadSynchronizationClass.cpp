@@ -40,36 +40,45 @@ void ThreadSynchronizationClass::CreateProduct()
 //队列满时，生产者阻塞，队列空时，消费者等待
 void ThreadSynchronizationClass::ProcessStage(queueDataInfo& dataA, queueDataInfo& dataB)
 {
+    const int batchItems = 10;
+    std::vector<ProductData> batch;
     std::unique_lock<std::mutex> lock(dataA.mutex);
     dataA.cv.wait(lock, [&]()
     {
-        return !dataA.queue.empty() || m_stop.load();
+        return dataA.queue.size() >= batchItems || m_stop.load();
     });
 
     if (m_stop.load())
     {
         return;
     }
+    for (int i = 0; i < batchItems; i++)
+    {
+        ProductData data = dataA.queue.front();
+        dataA.queue.pop();
+        batch.push_back(data);
+    }
 
-    ProductData data = dataA.queue.front();
-    dataA.queue.pop();
     lock.unlock();
-    dataA.cv.notify_one(); //被取出后应该及时提醒补货，否则容易造成生产端一直等待
+    dataA.cv.notify_all(); //被取出后应该及时提醒补货，否则容易造成生产端一直等待
 
     std::unique_lock<std::mutex> consumerLock(dataB.mutex);
 
     dataB.cv.wait(consumerLock, [&]
     {
-        return dataB.queue.size() < maxItem || m_stop.load();
+        return (dataB.queue.size() + batchItems) <= maxItem || m_stop.load();
     });
 
     if (m_stop.load())
     {
         return;
     }
-    dataB.queue.push(data);
+    for (auto& tmp : batch)
+    {
+        dataB.queue.push(tmp);
+    }
     consumerLock.unlock();
-    dataB.cv.notify_one(); // 加工完后立刻通知下游队列取货，不然无法进一步加工
+    dataB.cv.notify_all(); // 加工完后立刻通知下游队列取货，不然无法进一步加工
 }
 
 void ThreadSynchronizationClass::ConsumeProduct()
@@ -81,7 +90,7 @@ void ThreadSynchronizationClass::ConsumeProduct()
     });
 
     ProductData data = m_ConsumerData.queue.front();
-    std::cout << "ProductData Info is name: " << data.name << " id is : " << data.id << "current QueueSize is : " << m_ConsumerData.queue.size() << std::endl;
+    std::cout << "ProductData Info is name: " << data.name << " id is : " << data.id << "  current QueueSize is : " << m_ConsumerData.queue.size() << std::endl;
     m_ConsumerData.queue.pop();
     lock.unlock();
     m_ConsumerData.cv.notify_one();
@@ -135,7 +144,6 @@ void ThreadSynchronizationClass::TestCreatorComsumerModel()
             while (!m_stop.load(std::memory_order_acquire))
             {
                 ConsumeProduct();
-                std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         });
     }
