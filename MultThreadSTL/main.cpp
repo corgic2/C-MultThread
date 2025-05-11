@@ -3,9 +3,11 @@
 #include "Charpter2/CreateThread.h"
 #include "Charpter3/ThreadMutexAssistant.h"
 #include "Charpter4/ThreadSynchronizationClass.h"
+#include "ThreadPool/ThreadPool.h"
 #define CHARPATER2 0
 #define CHARPATER3 0
-#define CHARPATER4 1
+#define CHARPATER4 0
+#define THREADPOOL 1
 int main(int argc, char** argv)
 {
 #if CHARPATER2
@@ -35,6 +37,20 @@ int main(int argc, char** argv)
         ThreadSynchronizationClass t;
         std::thread tmp(&ThreadSynchronizationClass::TestCreatorComsumerModel, &t);
         tmp.join();
+    }
+#endif
+#if THREADPOOL
+    {
+        ThreadPool pool;
+        for (int i = 0; i < 1000; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            pool.AddTask([i]()
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                std::cout << "Task " << i << " is running." << std::endl;
+            });
+        }
     }
 #endif
     std::cout << "Main Function End" << std::endl;
