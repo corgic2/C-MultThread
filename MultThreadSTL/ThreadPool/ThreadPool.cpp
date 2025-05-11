@@ -7,7 +7,7 @@ void ThreadPool::WorkThread()
         std::lock_guard<std::mutex> lock(m_mutex);
         if (!m_workQueue.empty())
         {
-            auto work = m_workQueue.front();
+            auto work = std::move(m_workQueue.front());
             m_workQueue.pop();
             work();
         }

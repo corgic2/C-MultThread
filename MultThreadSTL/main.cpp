@@ -42,15 +42,25 @@ int main(int argc, char** argv)
 #if THREADPOOL
     {
         ThreadPool pool;
+        int cnt = 0;
+        std::mutex mtx;
+        std::vector<std::future<int>> res;
         for (int i = 0; i < 1000; ++i)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            pool.AddTask([i]()
+            auto tmp = pool.AddTask([i,&cnt,&mtx]()
             {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                std::cout << "Task " << i << " is running." << std::endl;
+                cnt++;
+                return cnt;
             });
+            res.push_back(std::move(tmp));
         }
+        int result = 0;
+        for (auto& tmp : res)
+        {
+            result += tmp.get();
+        }
+        std::cout << "the result is " << result << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 #endif
     std::cout << "Main Function End" << std::endl;
