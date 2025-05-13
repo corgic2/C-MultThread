@@ -87,6 +87,33 @@ public:
     ~ThreadPool();
 
 public:
+    using m_threadQueue = std::queue<FunctionOnlyMove>;
+
+    struct ST_localThreadQueue
+    {
+        ST_localThreadQueue() = default;
+
+        ST_localThreadQueue(ST_localThreadQueue&& other)
+            : queue(std::move(other.queue))
+        {
+        }
+
+        ST_localThreadQueue& operator=(ST_localThreadQueue&& other)
+        {
+            if (this != &other)
+            {
+                queue = std::move(other.queue);
+            }
+            return *this;
+        }
+
+        ST_localThreadQueue& operator=(const ST_localThreadQueue& other) = delete;
+        ST_localThreadQueue(const ST_localThreadQueue& other) = delete;
+        ST_localThreadQueue(ST_localThreadQueue& other) = delete;
+
+        std::unique_ptr<m_threadQueue> queue;
+        std::mutex mutex;
+    };
     template <typename Func>
     std::future<typename std::result_of<Func()>::type> AddTask(Func f)
     {
@@ -95,27 +122,31 @@ public:
         //task不可复制，只能通过移动,因此，task内的函数也应当仅支持移动
         //并且要获取函数返回值，则同步需要模板函数编程，因此自定义函数类
         std::future<result> res = task.get_future();
-        if (m_localWorkQueue)
+        //每次寻找最轻松的队列，以防任务不均衡
+        size_t idx = FindLightestQueue();
+        std::unique_lock<std::mutex> lock(m_localWorkQueue[idx].mutex, std::try_to_lock);
+        if (lock.owns_lock() && m_localWorkQueue[idx].queue)
         {
-            //如果当前线程拥有自己的任务队列，则直接将任务放入自己的队列中
-            m_localWorkQueue->emplace(std::move(task));
+            m_localWorkQueue[idx].queue->emplace(std::move(task));
+            return res;
         }
-        else
-        {
-            //如果当前线程没有自己的任务队列，则将任务放入全局队列中
-            std::lock_guard<std::mutex> lock(m_globalMutex);
-            m_workGlobalQueue.emplace(std::move(task));
-        }
+        // 回退到全局队列
+        std::lock_guard<std::mutex> globalLock(m_globalMutex);
+        m_workGlobalQueue.emplace(std::move(task));
         return res;
     }
 private:
     void WorkThread();
-    
+    int FindLightestQueue();
 private:
     std::atomic_bool m_globalDone;
     std::queue<FunctionOnlyMove> m_workGlobalQueue;
     std::mutex m_globalMutex;
-    using m_threadQueue = std::queue<FunctionOnlyMove>;
-    static thread_local std::unique_ptr<m_threadQueue> m_localWorkQueue; //根据当前线程不同各自拥有一个任务队列，减少全局队列的锁竞争
+
+    std::vector<ST_localThreadQueue> m_localWorkQueue; //根据当前线程不同各自拥有一个任务队列，减少全局队列的锁竞争
+    static thread_local ST_localThreadQueue* m_workQueue;
+    static thread_local int m_threadIndex;
+
+    std::atomic<size_t> m_nextQueueIndex{0}; // 新增原子计数器
     std::vector<std::thread> m_threads;
 };

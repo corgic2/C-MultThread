@@ -1,4 +1,5 @@
-﻿#include <functional>
+﻿#include <cassert>
+#include <functional>
 #include <iostream>
 #include "Charpter2/CreateThread.h"
 #include "Charpter3/ThreadMutexAssistant.h"
@@ -41,26 +42,31 @@ int main(int argc, char** argv)
 #endif
 #if THREADPOOL
     {
+        // 并发测试
         ThreadPool pool;
-        int cnt = 0;
-        std::mutex mtx;
-        std::vector<std::future<int>> res;
-        for (int i = 0; i < 1000; ++i)
+        std::vector<std::future<int>> futures;
+        time_t now = std::time(nullptr);
+        std::cout << "ThreadPool Test Start : " << ctime(&now) << std::endl;
+        for (int i = 0; i < 1e6; ++i)
         {
-            auto tmp = pool.AddTask([i,&cnt,&mtx]()
-            {
-                cnt++;
-                return cnt;
-            });
-            res.push_back(std::move(tmp));
+            //单线程预计需要1小时完成10000000次计算
+            //std::thread t([&]()
+            //{
+            //    return i * i;
+            //});
+            //t.join();
+            futures.push_back(pool.AddTask([i] { return i * i; })); //线程池则只需10秒左右
         }
-        int result = 0;
-        for (auto& tmp : res)
+        // 验证所有结果
+        for (auto& f : futures)
         {
-            result += tmp.get();
+            f.get();
         }
-        std::cout << "the result is " << result << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        time_t nowDif = std::time(nullptr);
+        std::cout << "\nThreadPool Test End : " << ctime(&nowDif) << std::endl;
+        std::cout << "ThreadPool Test Duration : " << difftime(nowDif, now) << " seconds" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
     }
 #endif
     std::cout << "Main Function End" << std::endl;
