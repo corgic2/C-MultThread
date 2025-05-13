@@ -27,7 +27,7 @@ private:
     struct ST_FuncImpl : public ST_FuncBase
     {
         ST_FuncImpl(F&& func)
-            : m_func(std::move(func))
+            : m_func(std::forward<F>(func))
         {
         }
 
@@ -42,7 +42,7 @@ private:
 public:
     template <typename F>
     FunctionOnlyMove(F&& func)
-        : m_funcImpl(new ST_FuncImpl<F>(std::move(func)))
+        : m_funcImpl(new ST_FuncImpl<F>(std::forward<F>(func)))
     {
     }
 
@@ -92,12 +92,19 @@ public:
     {
         using result = typename std::result_of<Func()>::type;
         std::packaged_task<result()> task(std::move(f));
+        //task不可复制，只能通过移动,因此，task内的函数也应当仅支持移动
+        //并且要获取函数返回值，则同步需要模板函数编程，因此自定义函数类
         std::future<result> res = task.get_future();
+        if (m_localWorkQueue)
         {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            //task不可复制，只能通过移动,因此，task内的函数也应当仅支持移动
-            //并且要获取函数返回值，则同步需要模板函数编程，因此自定义函数类
-            m_workQueue.emplace(std::move(task));
+            //如果当前线程拥有自己的任务队列，则直接将任务放入自己的队列中
+            m_localWorkQueue->emplace(std::move(task));
+        }
+        else
+        {
+            //如果当前线程没有自己的任务队列，则将任务放入全局队列中
+            std::lock_guard<std::mutex> lock(m_globalMutex);
+            m_workGlobalQueue.emplace(std::move(task));
         }
         return res;
     }
@@ -105,8 +112,10 @@ private:
     void WorkThread();
     
 private:
-    std::atomic_bool m_done;
-    std::queue<FunctionOnlyMove> m_workQueue;
-    std::mutex m_mutex;
-    std::vector<std::thread> threads;
+    std::atomic_bool m_globalDone;
+    std::queue<FunctionOnlyMove> m_workGlobalQueue;
+    std::mutex m_globalMutex;
+    using m_threadQueue = std::queue<FunctionOnlyMove>;
+    static thread_local std::unique_ptr<m_threadQueue> m_localWorkQueue; //根据当前线程不同各自拥有一个任务队列，减少全局队列的锁竞争
+    std::vector<std::thread> m_threads;
 };
