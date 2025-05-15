@@ -144,7 +144,6 @@ private:
     std::mutex m_globalMutex;
 
     std::vector<ST_localThreadQueue> m_localWorkQueue; //根据当前线程不同各自拥有一个任务队列，减少全局队列的锁竞争
-    static thread_local ST_localThreadQueue* m_workQueue;
     static thread_local int m_threadIndex;
 
     std::atomic<size_t> m_nextQueueIndex{0}; // 新增原子计数器
