@@ -1,4 +1,5 @@
 ﻿#include <cassert>
+#include <chrono>
 #include <functional>
 #include <iostream>
 #include "Charpter2/CreateThread.h"
@@ -45,8 +46,7 @@ int main(int argc, char** argv)
         // 并发测试
         ThreadPool pool;
         std::vector<std::future<int>> futures;
-        time_t now = std::time(nullptr);
-        std::cout << "ThreadPool Test Start : " << ctime(&now) << std::endl;
+        auto point = std::chrono::steady_clock::now();
         for (int i = 0; i < 1e6; ++i)
         {
             //单线程预计需要1小时完成10000000次计算
@@ -62,9 +62,8 @@ int main(int argc, char** argv)
         {
             f.get();
         }
-        time_t nowDif = std::time(nullptr);
-        std::cout << "\nThreadPool Test End : " << ctime(&nowDif) << std::endl;
-        std::cout << "ThreadPool Test Duration : " << difftime(nowDif, now) << " seconds" << std::endl;
+        auto pointNow = std::chrono::steady_clock::now();
+        std::cout << "time consume : " << (pointNow - point).count() / 1e9 << " seconds" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
     }
